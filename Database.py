@@ -1,5 +1,5 @@
 # database connection ---
-import MySQLdb
+from MySQLdb1 import MySQLdb
 class Database():
 
         def __init__(self):
