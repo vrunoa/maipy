@@ -1,0 +1,3 @@
+[submodule "MySQLdb1"]
+	path = MySQLdb1
+	url = https://github.com/farcepest/MySQLdb1.git
