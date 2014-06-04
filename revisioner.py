@@ -124,10 +124,14 @@ class Revisioner():
 
         """ the table change its structure """
         if compare["table_create"] != table["table_create"]:
+          rev_columns = rev["table_columns"]
+          tbl_columns = table["table_columns"]
+
           print "table change structure"
           print table["table_name"]
-
+          
       
+
       for rev in revision:
         compare = None
         for table in tables:
