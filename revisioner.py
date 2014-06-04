@@ -138,7 +138,7 @@ class Revisioner():
     print "Your current structure revision is %d" % args["version"]
 
   
-  def dump(self):
+  def dump(self, version):
     f = ".revisions/project.json"
     import os
     if not os.path.exists(f):
@@ -150,18 +150,7 @@ class Revisioner():
       args = content_file.read()
     args = json.loads(str(args))
 
-    import argparse
-    parser = argparse.ArgumentParser(description='Revisioner params.')
-    parser.add_argument('--r', help='Revision number')
-    input_args = parser.parse_args()
-    if input_args.r is None:
-      input_args.r = raw_input("Enter the revision number:")
-    
-    if input_args.r.strip() == "":
-      print "You must enter the revision number!"
-      return
-
-    r = input_args.r
+    r = version
     t = ".revisions/v%s/structure.json" %r
     if not os.path.exists(t):
       print "The revision number selected structure doesnt exists! Try again!"
@@ -182,7 +171,6 @@ class Revisioner():
       try: maiesicuel.append(table["table_alter"])
       except: pass
 
-    print maiesicuel
     dump = ";\r\n\r\n".join(maiesicuel)
     f = "%s.v%s.dump.sql" %(args["dbname"],r)
     file = open(f, 'w')
@@ -351,9 +339,24 @@ class Revisioner():
       print "A new structure revision has been created \r\n"
       print "the current revision now is: v%s" %args["version"]
 
+
 def main():
+  
   r = Revisioner()
-  r.dump()
+  
+  import argparse
+  parser = argparse.ArgumentParser(description='Revisioner params.')
+  parser.add_argument('-s', '--setup', action="store_true", help='Creates a new revisioner project')
+  parser.add_argument('-d', '--dump', action="store_true", help='Creates a dump of a revision, use -v to set the revision number')
+  parser.add_argument('-w', '--watch', action="store_true", help='Watch for changes in the structure and create a new revision')
+  parser.add_argument('-r', '--revision', action="store_true", help='Get current revision number')
+  parser.add_argument('-v', '--version', default=0, help='Revision version number')
+  args = parser.parse_args()
+  
+  if args.setup is True: r.setup()
+  elif args.watch is True: r.watch()
+  elif args.dump is True: r.dump(args.version)
+  else: r.revision()
 
 if __name__ == '__main__':
   main()
