@@ -103,6 +103,7 @@ class Revisioner():
     if not os.path.exists(t):
       file = open(t, 'w+')
       file.write(json.dumps(tables))
+    
     else:
       with open(t, 'r') as content_file:
         data = content_file.read()
@@ -124,8 +125,22 @@ class Revisioner():
         """ the table change its structure """
         if compare["table_create"] != table["table_create"]:
           print "table change structure"
-          print table["table_columns"]
+          print table["table_name"]
 
+      
+      for rev in revision:
+        compare = None
+        for table in tables:
+          if rev["table_name"] == table["table_name"]:
+            compare = rev
+            break
+        
+        """ a table has been deleted """
+        if compare is None:
+          niurevision.append({
+            "table_name" : rev["table_name"],
+            "table_drop" : " DROP TABLE %s" % rev["table_name"]
+          })
 
     print niurevision
 
