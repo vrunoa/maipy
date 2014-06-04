@@ -1,4 +1,4 @@
-MySQLRevisions.py
+maipy
 ==================
 MySQL Revision is a python command-line tool to keep revisions of the MySQL data structure. The idea is to combine this tool with git(or svn) repositories, this way you can share the database structure changes between users.
 
@@ -8,7 +8,7 @@ Using Git
 
 git submodule add clone https://github.com/vrunoa/MySQLRevisions.py
 
-./revisioner.py --setup
+./maipy.py --setup
 
 git add .revisions
 
@@ -32,7 +32,7 @@ Revisioner arguments:
    
 command
 ``` bash
-./revisioner.py -r
+./maipy.py -r
 ```
 output
 ``` bash
@@ -49,7 +49,7 @@ Lets say we have a project with this table structure
 
 We setup a revisioner project for this structure,
 ``` bash
-./revisioner.py --setup
+./maipy.py --setup
 ```
 Once done, we have our revision zero. 
 
@@ -73,7 +73,7 @@ Now we realize we forgot to set the <b>Email</b> column
 
 Add it to our table structure and crate a new revision with the --watch argument
 ``` bash
-./revisioner.py --watch
+./maipy.py --watch
 
 "A new structure revision has been created
 the current revision now is: v1"
@@ -81,7 +81,7 @@ the current revision now is: v1"
 
 A new dump for this revision will be
 ``` bash
-./revisioner.py --dump
+./maipy.py --dump
 
 USE DATABASE test;
 ALTER TABLE users ADD COLUMN Email varchar(100) NOT NULL;
@@ -91,7 +91,7 @@ TODO
 ====
 * <b>Test</b> A lot! This is really <b>beta</b>!
 * Add multiple users account each one with his own database params(host,socket,username,password)
-* Add date, project data to the .sql created on ./revisioner --dump
+* Add date, project data to the .sql created on ./maipy --dump
 * Obligate the user to always mantain their structure updated before creating a watch
 * Add documentation on SVN install
 
