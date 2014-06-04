@@ -1,85 +1,92 @@
 class Revisioner(): 
 
-  def install(self):
-
-    import argparse
-    parser = argparse.ArgumentParser(description='Process Revisioner params.')
-    parser.add_argument('--project', help='Project name')
-
-    parser.add_argument('--dbhost', help='MySQL Db host', default="localhost")
-    parser.add_argument('--dbuser', help='MySQL Db user')
-    parser.add_argument('--dbpass', help='MySQL Db pass')
-    parser.add_argument('--dbname', help='MySQL Db name to revision')
-
-    args = parser.parse_args()
-
-    if args.project is None:
+  def setup(self):
+    
+    args = {}
+    # TODO -- add multiple users setup
+    args["version"] = 0
+    args["project"] = raw_input("Enter the project name:")
+    if args["project"].strip() == "":
       print "Project name cant be empty"
       return
-
-    if args.dbhost is None:
+    
+    args["dbhost"] = raw_input("Enter MySQL Host:")
+    if args["dbhost"].strip() == "":
       print "MySQL db host cant be empty"
-      return
 
-    if args.dbuser is None:
+    args["dbsocket"] = raw_input("Enter MySQL Socket(Optional):")
+    if args["dbsocket"].strip() == "":
+      args["dbsocket"] = "/Applications/MAMP/tmp/mysql/mysql.sock"
+
+    args["dbuser"] = raw_input("Enter MySQL username:")
+    if args["dbuser"].strip() == "":
       print "MySQL db user cant be empty"
-      return
 
-    if args.dbpass is None:
-      print "MySQL db pass cant be empty"
-      return
-
-    if args.dbname is None:
+    args["dbpass"] = raw_input("Enter MySQL password:")
+    
+    args["dbname"] = raw_input("Enter MySQL Db Name:")
+    if args["dbname"].strip() == "":
       print "MySQL db name cant be empty"
-      return
-
+    
     import MySQLdb
     try:
       self.conn = MySQLdb.connect(
-        host = args.dbhost, 
-        user = args.dbuser, 
-        passwd = args.dbpass, 
-        unix_socket = '/Applications/MAMP/tmp/mysql/mysql.sock',
+        host = args["dbhost"], 
+        user = args["dbuser"], 
+        passwd = args["dbpass"],
+        unix_socket = args["dbsocket"],
       )
     except Exception as e:
-      print e
+      "Cannot create project, cant connect to the database"
       return
-
+    
+    f = ".revisions/project.json"
     import os
+    import json
     if not os.path.exists(".revisions"):
       os.makedirs(".revisions")
-
-    import json
-    f = ".revisions/%s.json" % args.project
-    if not os.path.exists(f):
-      file = open(f, 'w+')
-      data = { 
-          "dbname" : args.dbname, 
-          "version": 0, 
-          "dbuser" : args.dbuser,
-          "dbhost" : args.dbhost,
-          "project": args.project
-      }
-      file.write(json.dumps(data))
-    else:
+    elif os.path.exists(f):
       with open(f, 'r') as content_file:
         data = content_file.read()
-      
       data = json.loads(str(data))
-   
-    v = ".revisions/v%d" % data['version']
+      if data["project"] != args["project"]:
+        print "Cannot create project, overlaps another project folder"
+        return
+ 
+    if not os.path.exists(f):
+      file = open(f, 'w+')
+      file.write(json.dumps(args))
+      file.close()
+    
+    print "MySQL structure revisioner setup went successfully"
+    
+    print "Creating your first structure revision"
+    v = ".revisions/v%d" % args['version']
     if not os.path.exists(v):
       os.makedirs(v)
+   
+    tables = self.structure(args)
+    t = "%s/structure.json" %v
+    if not os.path.exists(t):
+      file = open(t, 'w+')
+      file.write(json.dumps(tables))
+      file.close()
 
+    print "Done! Your MySQL structure revision zero has been created"
+    return
+    
+
+  def structure(self, args):
+    import MySQLdb
     cursor = self.conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
-    cursor.execute("USE "+ args.dbname)
-
+    cursor.execute("USE "+ args["dbname"])
+    
     """ current database structure """
     cursor.execute("SHOW TABLES")
     rows = cursor.fetchall()
     tables = []
     for row in rows:
-      table_name = row["Tables_in_%s" % args.dbname]
+      table_name = row["Tables_in_%s" % args["dbname"]]
       cursor.execute("SHOW CREATE TABLE %s" %table_name)
       table_create = cursor.fetchone()
       table_create = table_create["Create Table"]
@@ -88,6 +95,7 @@ class Revisioner():
       columns_rows = cursor.fetchall()
       for column in columns_rows:
         columns.append(column)
+      
       table_columns = columns
       from datetime import datetime
       table_date = str(datetime.today().strftime("%Y-%m-%d %H:%M:%S"))
@@ -97,12 +105,91 @@ class Revisioner():
         "table_create" : table_create,
         "table_date"   : table_date
       })
+    return tables
+
+
+  def revision(self):
+    f = ".revisions/project.json"
+    import os
+    if not os.path.exists(f):
+      print "MySQL revisioner has not been setup on this computer"
+      return
+
+    import json
+    with open(f, 'r') as content_file:
+      args = content_file.read()
+    args = json.loads(str(args))
+    print "Your current structure revision is %d" % args["version"]
+
+
+  def donothing(self):
+    return
+
+  def dump(self):
+    f = ".revisions/project.json"
+    import os
+    if not os.path.exists(f):
+      print "MySQL revisioner has not been setup on this computer"
+      return
+
+    import json
+    with open(f, 'r') as content_file:
+      args = content_file.read()
+    args = json.loads(str(args))
+
+    import argparse
+    parser = argparse.ArgumentParser(description='Revisioner params.')
+    parser.add_argument('--r', help='Revision number')
+    input_args = parser.parse_args()
+    if input_args.r is None:
+      input_args.r = raw_input("Enter the revision number:")
     
+    if input_args.r.strip() == "":
+      print "You must enter the revision number!"
+      return
+
+    r = input_args.r
+    t = ".revisions/v%s/structure.json" %r
+    if not os.path.exists(t):
+      print "The revision number selected structure doesnt exists! Try again!"
+      return
+    
+    with open(t, 'r') as content_file:
+      structure = content_file.read()
+    structure = json.loads(str(structure))
+
+    print args
+    maiesicuel = []
+    # TODO -- add .sql dump project name, revision number, date
+    maiesicuel.append("USE DATABASE %s" % args["dbname"])
+    for table in structure:
+      try: maiesicuel.append(table["table_create"])
+      except: self.donothing()
+      try: maiesicuel.append(table["table_drop"]) 
+      except: self.donothing()
+      try: maiesiquel.append(table["table_alter"]) 
+      except: self.donothing()
+
+    dump = ";\r\n\r\n".join(maiesicuel)
+    f = "%s.v%s.dump.sql" %(args["dbname"],r)
+    file = open(f, 'w')
+    file.write(dump)
+    file.close()
+    print "Structure dump created, check the %s file" %f
+
+
+  def watch(self):
+    
+    with open(f, 'r') as content_file:
+      data = content_file.read()
+    data = json.loads(str(data))
+        
     niurevision = []
     t = "%s/tables.json" %v
     if not os.path.exists(t):
       file = open(t, 'w+')
       file.write(json.dumps(tables))
+      file.close()
     
     else:
       with open(t, 'r') as content_file:
@@ -226,14 +313,24 @@ class Revisioner():
         "No structure changes found"
 
       else:
-        print "Structure changes found, create a new revision"
         data["version"] = data["version"] + 1
         print data
+        f = ".revisions/%s.json" % args.project
+        file = open(f, "w")
+        file.write(json.dumps(data))
+        file.close()
+        v = ".revisions/v%d" % data['version']
+        os.makedirs(v)
+        t = "%s/tables.json" %v
+        file = open(t, 'w')
+        file.write(json.dumps(niurevision))
+        file.close()
+        print "A new structure revision has been created"
         print niurevision
 
 def main():
   r = Revisioner()
-  r.install();
+  r.dump()
 
 if __name__ == '__main__':
   main()
