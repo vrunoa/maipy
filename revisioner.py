@@ -1,5 +1,7 @@
 class Revisioner(): 
 
+  conn = None
+
   def setup(self):
     
     args = {}
@@ -78,6 +80,18 @@ class Revisioner():
 
   def structure(self, args):
     import MySQLdb
+    if self.conn is None:
+      try:
+        self.conn = MySQLdb.connect(
+          host = args["dbhost"], 
+          user = args["dbuser"], 
+          passwd = args["dbpass"],
+          unix_socket = args["dbsocket"],
+        )
+      except Exception as e:
+        "Cannot create project, cant connect to the database"
+        return
+
     cursor = self.conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
     cursor.execute("USE "+ args["dbname"])
     
@@ -163,9 +177,10 @@ class Revisioner():
       except: pass
       try: maiesicuel.append(table["table_drop"]) 
       except: pass
-      try: maiesiquel.append(table["table_alter"]) 
+      try: maiesicuel.append(table["table_alter"])
       except: pass
 
+    print maiesicuel
     dump = ";\r\n\r\n".join(maiesicuel)
     f = "%s.v%s.dump.sql" %(args["dbname"],r)
     file = open(f, 'w')
@@ -173,156 +188,166 @@ class Revisioner():
     file.close()
     print "Structure dump created, check the %s file" %f
 
+  def moo(self):
+    # a moo point
+    return
 
   def watch(self):
-    
+    f = ".revisions/project.json"
+    import os
+    if not os.path.exists(f):
+      print "MySQL revisioner has not been setup on this computer"
+      return
+
+    import json
     with open(f, 'r') as content_file:
-      data = content_file.read()
-    data = json.loads(str(data))
-        
-    niurevision = []
-    t = "%s/tables.json" %v
+      args = content_file.read()
+    args = json.loads(str(args))
+
+    t = ".revisions/v%s/structure.json" % args["version"]
     if not os.path.exists(t):
-      file = open(t, 'w+')
-      file.write(json.dumps(tables))
-      file.close()
+      # TODO -- workaround this
+      print "An error occurr while getting the revision structure file"
+      return
+
+    """ current revision structure """
+    with open(t, 'r') as content_file:
+      rev_data = content_file.read()
+    revision = json.loads(str(rev_data))
     
-    else:
-      with open(t, 'r') as content_file:
-        rev_data = content_file.read()
-      
-      """ current revision database structure """
-      revision = json.loads(rev_data)
-      for table in tables:
-        compare = None
-        for rev in revision:
-          if rev["table_name"] == table["table_name"]:
-            compare = rev
-            break
-        
-        """ new table created """
-        if compare is None:
-          niurevision.append(table)
-          break
+    """ current revision database structure """
+    tables = self.structure(args) 
 
-        """ the table change its structure """
-        if compare["table_create"] != table["table_create"]:
-          rev_columns = rev["table_columns"]
-          tbl_columns = table["table_columns"]
-          for tbl_col in tbl_columns:
-            compare_column = None
-            for rev_col in rev_columns:
-              if rev_col["Field"] == tbl_col["Field"]:
-                compare_column = rev_col
-                break
-            
-            """ new column created """
-            if compare_column is None:
-              
-              table_alter = " ALTER TABLE %s ADD COLUMN %s %s" %(table["table_name"], tbl_col["Field"], tbl_col["Type"])
-              
-              if tbl_col["Null"] == "NO" :
-                table_alter = table_alter + " NOT NULL"
-              
-              if tbl_col["Default"] is not None:
-                table_alter = table_alter + " DEFAULT %s" %tbl_col["Default"]
-              
-              if tbl_col["Extra"] != "":
-                table_alter = table_alter + " " + tbl_col["Extra"]
-                if tbl_col["Extra"] == "auto_increment":
-                  tbl_col["Key"] = "PRI"
-              
-              if tbl_col["Key"] != "":
-                if tbl_col["Key"] == "PRI": key = " PRIMARY KEY"
-                elif tbl_col["Key"] == "UNI": key = " UNIQUE"
-                table_alter = table_alter + key
 
-              table_alter = table_alter + ";"
-
-              niurevision.append({
-                "table_name" : table["table_name"],
-                "table_columns" : tbl_col,
-                "table_alter" : table_alter
-              })
-            
-            else:
-              if rev_col == tbl_col: continue
-              """ column change its structure """
-              
-              if rev_col["Type"] != tbl_col["Type"]:
-                table_alter = "ALTER TABLE %s MODIFY COLUMN %s %s" %(table["table_name"], tbl_col["Field"], tbl_col["Type"]) 
-              
-                if rev_col["Null"] != tbl_col["Null"]:
-                  if tbl_col["Null"] == "NO":
-                    table_alter = table_alter + " NOT NULL"
-                  else:
-                    table_alter = table_alter + " NULL"
-
-                if rev_col["Default"] != tbl_col["Default"]:
-                  if tbl_col["Default"] == None: 
-                    table_alter = table_alter + " DROP DEFAULT"
-                  else: 
-                    table_alter = table_alter + " SET DEFAULT %s" %tbl_col["Default"]
-
-              if rev_col["Key"] != tbl_col["Key"]:
-                print "change key value"
-
-              niurevision.append({
-                "table_name" : table["table_name"],
-                "table_columns": tbl_col,
-                "table_alter": table_alter
-              })
-
-          for rev_col in rev_columns:
-            compare_column = None
-            for tbl_col in tbl_columns:
-              if rev_col["Field"] == tbl_col["Field"]:
-                compare_column = rev_col
-                break
-          
-            """ a column has been deleted """
-            if compare_column is None:
-              table_alter = " ALTER TABLE %s DROP COLUMN %s;" %(table["table_name"], rev_col["Field"])
-#              if rev_col["Key"] != "": table_alter = table_alter + " ALTER TABLE %s DROP KEY %s;"%(table["table_name"], rev_col["Field"])
-
-              niurevision.append({
-                "table_name": table["table_name"],
-                "table_columns" : rev_col,
-                "table_alter" : table_alter
-              })
-
+    niurevision = []
+    for table in tables:
+      compare = None
       for rev in revision:
-        compare = None
-        for table in tables:
-          if rev["table_name"] == table["table_name"]:
-            compare = rev
-            break
+        if rev["table_name"] == table["table_name"]:
+          compare = rev
+          break
         
-        """ a table has been deleted """
-        if compare is None:
-          niurevision.append({
-            "table_name" : rev["table_name"],
-            "table_drop" : " DROP TABLE %s" % rev["table_name"]
-          })
+      """ new table created """
+      if compare is None:
+        niurevision.append(table)
+        break
 
-      if len(niurevision) == 0:
-        "No structure changes found"
+      """ the table change its structure """
+      if compare["table_create"] != table["table_create"]:
+        rev_columns = rev["table_columns"]
+        tbl_columns = table["table_columns"]
+        for tbl_col in tbl_columns:
+          compare_column = None
+          for rev_col in rev_columns:
+            if rev_col["Field"] == tbl_col["Field"]:
+              compare_column = rev_col
+              break
+            
+          """ new column created """
+          if compare_column is None:
+              
+            table_alter = " ALTER TABLE %s ADD COLUMN %s %s" %(table["table_name"], tbl_col["Field"], tbl_col["Type"])
+              
+            if tbl_col["Null"] == "NO" :
+              table_alter = table_alter + " NOT NULL"
+              
+            if tbl_col["Default"] is not None:
+              table_alter = table_alter + " DEFAULT %s" %tbl_col["Default"]
+              
+            if tbl_col["Extra"] != "":
+              table_alter = table_alter + " " + tbl_col["Extra"]
+              if tbl_col["Extra"] == "auto_increment":
+                tbl_col["Key"] = "PRI"
+              
+            if tbl_col["Key"] != "":
+              if tbl_col["Key"] == "PRI": key = " PRIMARY KEY"
+              elif tbl_col["Key"] == "UNI": key = " UNIQUE"
+              table_alter = table_alter + key
 
-      else:
-        data["version"] = data["version"] + 1
-        print data
-        f = ".revisions/%s.json" % args.project
-        file = open(f, "w")
-        file.write(json.dumps(data))
-        file.close()
-        v = ".revisions/v%d" % data['version']
-        os.makedirs(v)
-        t = "%s/tables.json" %v
-        file = open(t, 'w')
-        file.write(json.dumps(niurevision))
-        file.close()
-        print "A new structure revision has been created"
-        print niurevision
+            table_alter = table_alter + ";"
+
+            niurevision.append({
+              "table_name" : table["table_name"],
+              "table_columns" : tbl_col,
+              "table_alter" : table_alter
+            })
+            
+          else:
+            if rev_col == tbl_col: continue
+            """ column change its structure """
+              
+            if rev_col["Type"] != tbl_col["Type"]:
+              table_alter = "ALTER TABLE %s MODIFY COLUMN %s %s" %(table["table_name"], tbl_col["Field"], tbl_col["Type"]) 
+            
+              if rev_col["Null"] != tbl_col["Null"]:
+                if tbl_col["Null"] == "NO":
+                  table_alter = table_alter + " NOT NULL"
+                else:
+                  table_alter = table_alter + " NULL"
+
+              if rev_col["Default"] != tbl_col["Default"]:
+                if tbl_col["Default"] == None: 
+                  table_alter = table_alter + " DROP DEFAULT"
+                else: 
+                  table_alter = table_alter + " SET DEFAULT %s" %tbl_col["Default"]
+
+            if rev_col["Key"] != tbl_col["Key"]:
+              print "change key value"
+
+            niurevision.append({
+              "table_name" : table["table_name"],
+              "table_columns": tbl_col,
+              "table_alter": table_alter
+            })
+
+        for rev_col in rev_columns:
+          compare_column = None
+          for tbl_col in tbl_columns:
+            if rev_col["Field"] == tbl_col["Field"]:
+              compare_column = rev_col
+              break
+          
+          """ a column has been deleted """
+          if compare_column is None:
+            table_alter = " ALTER TABLE %s DROP COLUMN %s;" %(table["table_name"], rev_col["Field"])
+#            if rev_col["Key"] != "": table_alter = table_alter + " ALTER TABLE %s DROP KEY %s;"%(table["table_name"], rev_col["Field"])
+            niurevision.append({
+              "table_name": table["table_name"],
+              "table_columns" : rev_col,
+              "table_alter" : table_alter
+            })
+
+    for rev in revision:
+      compare = None
+      for table in tables:
+        if rev["table_name"] == table["table_name"]:
+          compare = rev
+          break
+        
+      """ a table has been deleted """
+      if compare is None:
+        niurevision.append({
+          "table_name" : rev["table_name"],
+          "table_drop" : " DROP TABLE %s" % rev["table_name"]
+        })
+
+    if len(niurevision) == 0:
+      print "No structure changes found,\r\n the current revision still: v%s" %args["version"]
+
+    else:
+      args["version"] = args["version"] + 1
+      f = ".revisions/project.json"
+      file = open(f, "w")
+      file.write(json.dumps(args))
+      file.close()
+      v = ".revisions/v%d" % args['version']
+      os.makedirs(v)
+      t = "%s/structure.json" %v
+      file = open(t, 'w')
+      file.write(json.dumps(niurevision))
+      file.close()
+      print "A new structure revision has been created \r\n"
+      print "the current revision now is: v%s" %args["version"]
 
 def main():
   r = Revisioner()
