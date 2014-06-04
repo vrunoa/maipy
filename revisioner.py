@@ -121,10 +121,7 @@ class Revisioner():
     args = json.loads(str(args))
     print "Your current structure revision is %d" % args["version"]
 
-
-  def donothing(self):
-    return
-
+  
   def dump(self):
     f = ".revisions/project.json"
     import os
@@ -158,17 +155,16 @@ class Revisioner():
       structure = content_file.read()
     structure = json.loads(str(structure))
 
-    print args
     maiesicuel = []
     # TODO -- add .sql dump project name, revision number, date
     maiesicuel.append("USE DATABASE %s" % args["dbname"])
     for table in structure:
       try: maiesicuel.append(table["table_create"])
-      except: self.donothing()
+      except: pass
       try: maiesicuel.append(table["table_drop"]) 
-      except: self.donothing()
+      except: pass
       try: maiesiquel.append(table["table_alter"]) 
-      except: self.donothing()
+      except: pass
 
     dump = ";\r\n\r\n".join(maiesicuel)
     f = "%s.v%s.dump.sql" %(args["dbname"],r)
