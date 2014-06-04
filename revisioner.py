@@ -98,6 +98,7 @@ class Revisioner():
         "table_date"   : table_date
       })
     
+    niurevision = []
     t = "%s/tables.json" %v
     if not os.path.exists(t):
       file = open(t, 'w+')
@@ -108,12 +109,25 @@ class Revisioner():
       
       """ current revision database structure """
       revision = json.loads(data)
-      changes = false
       for table in tables:
-        actual_table_name = table["table_name"]
-        print actual_table_name 
-      
-      
+        compare = None
+        for rev in revision:
+          if rev["table_name"] == table["table_name"]:
+            compare = rev
+            break
+        
+        """ new table created """
+        if compare is None:
+          niurevision.append(table)
+          break
+
+        """ the table change its structure """
+        if compare["table_create"] != table["table_create"]:
+          print "table change structure"
+          print table["table_columns"]
+
+
+    print niurevision
 
 def main():
   r = Revisioner()
