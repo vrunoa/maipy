@@ -159,6 +159,9 @@ class Revisioner():
                 "table_columns" : tbl_col,
                 "table_alter" : table_alter
               })
+            else:
+              print "column change its structure"
+              print tbl_col["Field"]
 
           for rev_col in rev_columns:
             compare_column = None
