@@ -1,5 +1,5 @@
 # database connection ---
-from MySQLdb1 import MySQLdb
+import MySQLdb
 class Database():
 
         def __init__(self):
@@ -9,10 +9,24 @@ class Database():
 #                user         = self.config.getConfig('resources.db.params.username')
 #                passwd = self.config.getConfig('resources.db.params.password')
 #                db                 = self.config.getConfig('resources.db.params.dbname')
-                self.conn = MySQLdb.connect (host = "localhost", user = "root", passwd = "perrito", db = "cinemarosario")
 
         def __del__(self):
+            try: 
                 self.conn.close()
+            except Exception as e:
+                print e
+                # do nothing
+
+
+        def connect(self, host, user, passwd, db):
+                self.conn = MySQLdb.connect(
+                        host = host, 
+                        user = user, 
+                        passwd = passwd, 
+                        db = db,
+                        unix_socket = '/Applications/MAMP/tmp/mysql/mysql.sock',
+                )
+
 
         def seleccionar(self, query):
                 self.cursor = self.conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
