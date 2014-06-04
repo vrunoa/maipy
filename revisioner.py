@@ -106,10 +106,10 @@ class Revisioner():
     
     else:
       with open(t, 'r') as content_file:
-        data = content_file.read()
+        rev_data = content_file.read()
       
       """ current revision database structure """
-      revision = json.loads(data)
+      revision = json.loads(rev_data)
       for table in tables:
         compare = None
         for rev in revision:
@@ -145,12 +145,14 @@ class Revisioner():
                 table_alter = table_alter + " DEFAULT %s" %tbl_col["Default"]
               
               if tbl_col["Extra"] != "":
-                table_alter = table_alter + tbl_col["extra"]
-
+                table_alter = table_alter + " " + tbl_col["Extra"]
+                if tbl_col["Extra"] == "auto_increment":
+                  tbl_col["Key"] = "PRI"
+              
               if tbl_col["Key"] != "":
-                if tbl_col["Key"] == "PRI": key = "PRIMARY"
-                elif tbl_col["Key"] == "UNI": key = "UNIQUE"
-                table_alter = table_alter + " ADD %s(%s)" %(key, tbl_col["Field"]) 
+                if tbl_col["Key"] == "PRI": key = " PRIMARY KEY"
+                elif tbl_col["Key"] == "UNI": key = " UNIQUE"
+                table_alter = table_alter + key
 
               table_alter = table_alter + ";"
 
@@ -220,7 +222,14 @@ class Revisioner():
             "table_drop" : " DROP TABLE %s" % rev["table_name"]
           })
 
-      print niurevision
+      if len(niurevision) == 0:
+        "No structure changes found"
+
+      else:
+        print "Structure changes found, create a new revision"
+        data["version"] = data["version"] + 1
+        print data
+        print niurevision
 
 def main():
   r = Revisioner()
