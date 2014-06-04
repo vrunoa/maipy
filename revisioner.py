@@ -108,7 +108,10 @@ class Revisioner():
       
       """ current revision database structure """
       revision = json.loads(data)
-      print "make revision" 
+      changes = false
+      for table in tables:
+        actual_table_name = table["table_name"]
+        print actual_table_name 
       
       
 
