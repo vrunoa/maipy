@@ -126,11 +126,60 @@ class Revisioner():
         if compare["table_create"] != table["table_create"]:
           rev_columns = rev["table_columns"]
           tbl_columns = table["table_columns"]
+          for tbl_col in tbl_columns:
+            compare_column = None
+            for rev_col in rev_columns:
+              if rev_col["Field"] == tbl_col["Field"]:
+                compare_column = rev_col
+                break
+            
+            """ new column created """
+            if compare_column is None:
+              
+              table_alter = " ALTER TABLE %s ADD COLUMN %s %s" %(table["table_name"], tbl_col["Field"], tbl_col["Type"])
+              
+              if tbl_col["Null"] == "NO" :
+                table_alter = table_alter + " NOT NULL"
+              
+              if tbl_col["Default"] is not None:
+                table_alter = table_alter + " DEFAULT %s" %tbl_col["Default"]
+              
+              if tbl_col["Extra"] != "":
+                table_alter = table_alter + tbl_col["extra"]
 
-          print "table change structure"
-          print table["table_name"]
+    
+              if tbl_col["Key"] != "":
+                if tbl_col["Key"] == "PRI": key = "PRIMARY"
+                elif tbl_col["Key"] == "UNI": key = "UNIQUE"
+                table_alter = table_alter + " ADD %s(%s)" %(key, tbl_col["Field"]) 
+
+              table_alter = table_alter + ";"
+
+              niurevision.append({
+                "table_name" : table["table_name"],
+                "table_columns" : tbl_col,
+                "table_alter" : table_alter
+              })
+
+        for rev_col in rev_columns:
+          compare_column = None
+          for tbl_col in tbl_columns:
+            if rev_col["Field"] == tbl_col["Field"]:
+              compare_column = rev_col
+              break
           
-      
+          """ a column has been deleted """
+          if compare_column is None:
+            table_alter = " ALTER TABLE %s DROP COLUMN %s;" %(table["table_name"], rev_col["Field"])
+            if rev_col["Key"] != "":
+              table_alter = table_alter + " ALTER TABLE %s DROP KEY %s;"%(table["table_name"], rev_col["Field"])
+
+            niurevision.append({
+              "table_name": table["table_name"],
+              "table_columns" : rev_col,
+              "table_alter" : table_alter
+            })
+
 
       for rev in revision:
         compare = None
@@ -146,7 +195,7 @@ class Revisioner():
             "table_drop" : " DROP TABLE %s" % rev["table_name"]
           })
 
-    print niurevision
+      print niurevision
 
 def main():
   r = Revisioner()
