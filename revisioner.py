@@ -159,9 +159,34 @@ class Revisioner():
                 "table_columns" : tbl_col,
                 "table_alter" : table_alter
               })
+            
             else:
-              print "column change its structure"
-              print tbl_col["Field"]
+              if rev_col == tbl_col: continue
+              """ column change its structure """
+              
+              if rev_col["Type"] != tbl_col["Type"]:
+                table_alter = "ALTER TABLE %s MODIFY COLUMN %s %s" %(table["table_name"], tbl_col["Field"], tbl_col["Type"]) 
+              
+                if rev_col["Null"] != tbl_col["Null"]:
+                  if tbl_col["Null"] == "NO":
+                    table_alter = table_alter + " NOT NULL"
+                  else:
+                    table_alter = table_alter + " NULL"
+
+                if rev_col["Default"] != tbl_col["Default"]:
+                  if tbl_col["Default"] == None: 
+                    table_alter = table_alter + " DROP DEFAULT"
+                  else: 
+                    table_alter = table_alter + " SET DEFAULT %s" %tbl_col["Default"]
+
+              if rev_col["Key"] != tbl_col["Key"]:
+                print "change key value"
+
+              niurevision.append({
+                "table_name" : table["table_name"],
+                "table_columns": tbl_col,
+                "table_alter": table_alter
+              })
 
           for rev_col in rev_columns:
             compare_column = None
