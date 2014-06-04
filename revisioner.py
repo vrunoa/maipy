@@ -147,7 +147,6 @@ class Revisioner():
               if tbl_col["Extra"] != "":
                 table_alter = table_alter + tbl_col["extra"]
 
-    
               if tbl_col["Key"] != "":
                 if tbl_col["Key"] == "PRI": key = "PRIMARY"
                 elif tbl_col["Key"] == "UNI": key = "UNIQUE"
@@ -161,25 +160,23 @@ class Revisioner():
                 "table_alter" : table_alter
               })
 
-        for rev_col in rev_columns:
-          compare_column = None
-          for tbl_col in tbl_columns:
-            if rev_col["Field"] == tbl_col["Field"]:
-              compare_column = rev_col
-              break
+          for rev_col in rev_columns:
+            compare_column = None
+            for tbl_col in tbl_columns:
+              if rev_col["Field"] == tbl_col["Field"]:
+                compare_column = rev_col
+                break
           
-          """ a column has been deleted """
-          if compare_column is None:
-            table_alter = " ALTER TABLE %s DROP COLUMN %s;" %(table["table_name"], rev_col["Field"])
-            if rev_col["Key"] != "":
-              table_alter = table_alter + " ALTER TABLE %s DROP KEY %s;"%(table["table_name"], rev_col["Field"])
+            """ a column has been deleted """
+            if compare_column is None:
+              table_alter = " ALTER TABLE %s DROP COLUMN %s;" %(table["table_name"], rev_col["Field"])
+#              if rev_col["Key"] != "": table_alter = table_alter + " ALTER TABLE %s DROP KEY %s;"%(table["table_name"], rev_col["Field"])
 
-            niurevision.append({
-              "table_name": table["table_name"],
-              "table_columns" : rev_col,
-              "table_alter" : table_alter
-            })
-
+              niurevision.append({
+                "table_name": table["table_name"],
+                "table_columns" : rev_col,
+                "table_alter" : table_alter
+              })
 
       for rev in revision:
         compare = None
