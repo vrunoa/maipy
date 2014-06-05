@@ -1,6 +1,6 @@
 maipy
 ==================
-MySQL Revision is a python command-line tool to keep revisions of the MySQL data structure. The idea is to combine this tool with git(or svn) repositories, this way you can share the database structure changes between users.
+MySQL Revision is a python command-line tool to keep revisions of the MySQL data structure. The idea is to combine this tool with git(or svn) repositories, this way you can share the database structure changes between users, stages, servers(development. production)
 
 Install
 =======
